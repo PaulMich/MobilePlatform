@@ -1,18 +1,20 @@
 /*
  * MP_engines_pwm_controll.c
  *
- * Created: 10/20/2019 12:15:40 PM
- * Author : Pawel
+ * Author : PaulMich
+ * GITHUB: https://github.com/PaulMich/MobilePlatform
+ * LICENSE: MIT License, https://github.com/PaulMich/MobilePlatform/blob/master/LICENSE
  */ 
 
+
 /********************************************************************************************/
-/* TABELA PRAWDY DLA STEROWNIKA TB9051FTG													*/
+/* Truth table for TB9051FTG																*/
 /*																							*/
-/*  WEJSCIE						|WYJSCIE				|									*/
-/*  EN	|ENB	|PWM1(A)|PWM2(B)|OUT1		|OUT2		|TRYB PRACY							*/
-/*	PWM	|0		|1		|0		|PWM(H/Z)	|PWM(L/Z)	|Obroty do przodu/swobodny bieg		*/
-/*	PWM	|0		|0		|1		|PWM(L/Z)	|PWM(H/Z)	|Obroty do tylu/swobodny bieg		*/
-/*	0	|X		|X		|X		|Z			|Z			|Swobodny bieg, wyjscia odlaczone	*/
+/*  INPUT						|OUTPUT					|									*/
+/*  EN	|ENB	|PWM1(A)|PWM2(B)|OUT1		|OUT2		|MODE								*/
+/*	PWM	|0		|1		|0		|PWM(H/Z)	|PWM(L/Z)	|rotate forward/loose				*/
+/*	PWM	|0		|0		|1		|PWM(L/Z)	|PWM(H/Z)	|rotate backward/loose				*/
+/*	0	|X		|X		|X		|Z			|Z			|Loose, uotputs disabled			*/
 /********************************************************************************************/
 
 #include <avr/io.h>
@@ -25,7 +27,6 @@
 #define CTRL_LED	PB0
 #define PORT_CTRL_LED PORTB	
 
-//#define ENB_FR	PC0
 #define EN_FR	PD6	//!< (PWM -> OCR0A)
 #define A_FR	PC3
 #define B_FR	PC2
@@ -33,7 +34,6 @@
 #define PORT_EN_FR PORTD
 #define PORT_AB_FR PORTC
 
-//#define ENB_FL	PC0
 #define EN_FL	PD5	//!< (PWM -> OCR0B)
 #define A_FL	PC0
 #define B_FL	PC1
@@ -41,7 +41,6 @@
 #define PORT_EN_FL PORTD
 #define PORT_AB_FL PORTC
 
-//#define ENB_RR	PC0
 #define EN_RR	PB1	//!< (PWM -> OCR1A)
 #define A_RR	PD4
 #define B_RR	PD7
@@ -49,7 +48,6 @@
 #define PORT_EN_RR PORTB
 #define PORT_AB_RR PORTD
 
-//#define ENB_RL	PC0
 #define EN_RL	PB2	//!< (PWM -> OCR1B)
 #define A_RL	PD0
 #define B_RL	PD1
@@ -322,25 +320,25 @@ uint8_t f_engine_rotation = STOP;
 uint8_t en_a = 0;
 uint8_t en_b = 0;
 
-uint8_t engines_cmd_counter = 0;	//licznik przes?anych danych
+uint8_t engines_cmd_counter = 0;	//<! received data counter
 uint8_t f_new_cmd = 0;				
-uint8_t direction_mask = 0x0F;		//maska bitowa zawieraj?ca informacje o kierunku obrotów silników
+uint8_t direction_mask = 0x0F;		//<! bit mask storing information about direction of engines rotation
 
 void I2C_received(uint8_t data)
 {
-	if(data == I2C_CMD_START)	//je?eli nowa komenda
+	if(data == I2C_CMD_START)		//<! if new command is received
 	{
 		engines_cmd_counter = 0;	
-		f_new_cmd = 1;			//rozpocznij zapis danych
+		f_new_cmd = 1;				//<! start saving data
 	}
 	
-	if(f_new_cmd)
+	if(f_new_cmd)					//<! saving data
 	{
 		if(engines_cmd_counter == 1) dutyCycle_FL = data;
 		else if(engines_cmd_counter == 2) dutyCycle_FR = data;		
 		else if(engines_cmd_counter == 3) dutyCycle_RL = data;		
 		else if(engines_cmd_counter == 4) dutyCycle_RR = data;	
-		else if(engines_cmd_counter == 5) {direction_mask = data; f_new_cmd = 0;}	//zako?cz zapis danych
+		else if(engines_cmd_counter == 5) {direction_mask = data; f_new_cmd = 0;}	//<! saving data done
 	}
 	engines_cmd_counter++;
 }
@@ -351,45 +349,47 @@ void I2C_requested()
 
 int main(void)
 {	
-	//! Inicjalizacja I2C w trybie slave z adresem 0x08
+	//! I2C init w slave mode with adrress 0x08
 	I2C_setCallbacks(I2C_received, I2C_requested);
 	I2C_init(I2C_ADDR);
 	
-	//! Zapalenie diody kontrolnej
+	//! Turn on controll LED
 	DDRB |= _BV(CTRL_LED);
 	digitalWrite(&PORT_CTRL_LED, CTRL_LED, 1);
 	
-    //! Konfiguracja portow sterownika 1. silnika (FR)
+    //! Engine 1. (FR) configuration
 	DDRD |= _BV(EN_FR); 
 	DDRC |= _BV(A_FR);
 	DDRC |= _BV(B_FR); 
 	
-	//! Konfiguracja portow sterownika 2. silnika (FL)
+	//! Engine 2. (FL) configuration
 	DDRD |= _BV(EN_FL);
 	DDRC |= _BV(A_FL);
 	DDRC |= _BV(B_FL);
 	
-	//! Konfiguracja portow sterownika 3. silnika (RR)
+	//! Engine 3. (RR) configuration
 	DDRB |= _BV(EN_RR);
 	DDRD |= _BV(A_RR);
 	DDRD |= _BV(B_RR);
 	
-	//! Konfiguracja portow sterownika 4. silnika (RL)
+	//! Engine 4. (RL) configuration 
 	DDRB |= _BV(EN_RL);
 	DDRD |= _BV(A_RL);
 	DDRD |= _BV(B_RL);	
-	
-	//! Konfiguracja timera dla PWM 1. i 2. silnika (FR, FL) - non-inverting Fast PWM
+
+	//! Timer configuration for engines 1. and 2. PWM (FR, FL) - non-inverting Fast PWM
 	TCCR0A = (_BV(COM0A1) | _BV(COM0B1) | _BV(WGM01) | _BV(WGM00));
-	//! Konfiguracja przerwan timera dla PWM 1. i 2. silnika (FR, FL) - timer overflow
+	
+	//! Timer interrupt configuration for engine 1. and 2. PWM (FR, FL) - timer overflow
 	TIMSK0 = _BV(TOIE0);
 	
 	OCR0A = (dutyCycle_FR/100)*255;
 	OCR0B = (dutyCycle_FL/100)*255;
 	
-	//! Konfiguracja timera dla PWM 3. silnika (RR) - 8-bit non-inverting Fast PWM
+	//! Timer configuration for engine 3. and 4. PWM (RR, RL) - 8-bit non-inverting Fast PWM
 	TCCR1A = (_BV(COM1A1) | _BV(COM1B1) | _BV(WGM10));
-	//! Konfiguracja przerwan timera dla PWM 3. i 4. silnika (RR, RL) - timer overflow
+	
+	//! Timer interrupt configuration for engine 3. and 4. PWM (RR, RL) - timer overflow
 	TIMSK1 = _BV(TOIE1);
 
 	OCR1A = (dutyCycle_RR/100)*255;
@@ -397,10 +397,10 @@ int main(void)
 	
 	GTCCR = _BV(PSRSYNC);
 	
-	//! Konfiguracja prescalera dla PWM 1. i 2. silnika (FR, FL) - clk_IO/1
+	//! Prescaler configuration for engine 1. and 2. PWM (FR, FL) - clk_IO/1
 	TCCR0B = _BV(CS10);
 
-	//! Konfiguracja prescalera dla PWM 3. i 4. silnika (RR) - clk_IO/1
+	//! Prescaler configuration for engine 3. and 4. PWM (RR, RL) - clk_IO/1
 	TCCR1B = (_BV(CS10) | _BV(WGM12));
 	
 	sei();
@@ -411,6 +411,11 @@ int main(void)
 	dutyCycle_FL = 0;
 	dutyCycle_RL = 0;
 	dutyCycle_RR = 0;
+	
+	//! MAIN LOOP
+	/*!
+		Program controlls the engines based on data stored in direcetion_mask
+	*/
     while (1) 
     {
 		if(dutyCycle_FL == 0)
@@ -494,7 +499,7 @@ int main(void)
     }
 }
 
-//! 
+//<! INTERRUPTS 
 ISR(TIMER0_OVF_vect)
 {
 	OCR0A = (dutyCycle_FR/100)*255;

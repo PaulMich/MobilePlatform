@@ -1,32 +1,30 @@
 /*
  * PWR_supply_board.c
  *
- * Created: 11/24/2019 4:58:29 PM
- * Author : Pawel
+ * Author : PaulMich
+ * GITHUB: https://github.com/PaulMich/MobilePlatform
+ * LICENSE: MIT License, https://github.com/PaulMich/MobilePlatform/blob/master/LICENSE
  */ 
 #define F_CPU 1000000L
 #include <avr/io.h>
 //#include <util/delay.h>
 
 
+
+//! This functions makes measurements on ADC1, ADC2, and ADC3 inputs and saves them into 
 /*!
- * \brief
- * This functions makes measurements on ADC1, ADC2, and ADC3 inputs and saves them into 
- * provided variables.
- * \param adc1 - final result of ADC1 measurement
- * \param adc2 - final result of ADC2 measurement
- * \param adc3 - final result of ADC3 measurement
- */
+	provided variables.
+	\param adc1 - final result of ADC1 measurement
+	\param adc2 - final result of ADC2 measurement
+	\param adc3 - final result of ADC3 measurement
+*/
 int measureADC(int *adc1, int *adc2, int *adc3)
 {
-	/*!
-	 * flags & counters used to keep track of measurments
-	 */
+	//! flags & counters used to keep track of measurments
 	int numberOfSamplesInMeasurment = 10;
 	
-	/*!
-	 * Variables to store summarized ADC measurements
-	 */
+	
+	//! Variables to store summarized ADC measurements
 	int sum_CELL1 = 0;
 	int sum_CELL2 = 0;
 	int sum_CELL3 = 0;
@@ -64,38 +62,38 @@ int measureADC(int *adc1, int *adc2, int *adc3)
 
 int main(void)
 {
+	//! Stationary power supply mode. 
 	/*!
-	 * Stationary power supply mode. 
-	 * 1 - Disabled
-	 * 0 - Enabled
-	 */
+		1 - Disabled
+		0 - Enabled
+	*/
 	DDRB &= ~_BV(1);
 	PORTB |= _BV(1);
 	
 	
-	/*!
-	 * PWR BOARD status LED, lights up when system is running
-	 */
+	
+	//! PWR BOARD status LED, lights up when system is running
 	DDRB  |= _BV(6);	
 	PORTB |= _BV(6);
 	
+	//! ERROR red LED 
 	/*!
-	 * ERROR red LED, lights up when voltage measured on any ADC input
-	 * is outside specified range (3.3, 4.2) [V]
-	 */
+		lights up when voltage measured on any ADC input
+		is outside specified range (3.3, 4.2) [V]
+	*/
 	DDRB  |= _BV(2);	 
 	PORTB &= ~_BV(2);
 	
+	//! MOSFET
 	/*!
-	 * MOSFET, turned on by default, turns of when any of the cells voltages
-	 * reaches limit values.
-	 */
+		turned on by default, turns of when any of the cells voltages
+		reaches limit values.
+	*/
 	DDRB |= _BV(0);
 	PORTB &= ~_BV(0);
 	
-	/*!
-	 * LED battery level indicator
-	 */
+	
+	//! LED battery level indicator
 	DDRD = 0xFF;
 	
 	PORTD |= _BV(0);
@@ -107,16 +105,14 @@ int main(void)
 	PORTD |= _BV(6);
 	PORTD |= _BV(7);
 	
-	/*!
-	 * Variables storing measurments results
-	 */
+	
+	//! Variables storing measurments results
 	int res_CELL1 = 0;
 	int res_CELL2 = 0;
 	int res_CELL3 = 0;
 	
-	/*!
-	 * Cells voltage limits 
-	 */
+	
+	//! Cells voltage limits 
 	int minCellVoltage = 676; //!< ~3.3[V]
 	int maxCellVoltage = 870; //!< ~4.25[V]
 	
